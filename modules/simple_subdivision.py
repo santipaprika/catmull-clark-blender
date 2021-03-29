@@ -5,14 +5,18 @@ from manifolds import get_manifolds
 from create_mesh import create_mesh
 
 
+def average_vertices(me, vertices_idx):
+    avg = mathutils.Vector([0,0,0])
+    for vert_idx in vertices_idx:
+        avg += me.vertices[vert_idx].co
+
+    return (avg / len(vertices_idx))
+
+
 def compute_face_vertices(me):
     face_vertices = []
     for polygon in me.polygons:
-        centroid = mathutils.Vector([0,0,0])
-        for vert_idx in polygon.vertices:
-            centroid += me.vertices[vert_idx].co
-
-        face_vertices.append(centroid / len(polygon.vertices))
+        face_vertices.append(average_vertices(me, polygon.vertices))
 
     return face_vertices
 

@@ -1,11 +1,6 @@
 import bpy 
 from time import time
 import mathutils
-# import sys, os
-# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-# sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../modules")
-from utils import r
-
 
 def get_manifolds(me):
 
@@ -46,4 +41,4 @@ def main():
 
 
 if __name__ == "__main__":
-   main()
+    main()
