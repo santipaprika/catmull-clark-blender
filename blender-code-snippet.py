@@ -10,8 +10,8 @@ import simple_subdivision
 import catmull_clark_subdivision
 import create_mesh
 
-imp.reload( simple_subdivision )
 imp.reload( create_mesh )
+imp.reload( simple_subdivision )
 imp.reload( catmull_clark_subdivision )
 catmull_clark_subdivision.main()
 #simple_subdivision.main()

@@ -3,7 +3,7 @@ import bpy
 import mathutils
 from manifolds import get_manifolds
 from create_mesh import create_mesh
-from simple_subdivision import compute_face_vertices
+from simple_subdivision import compute_face_vertices, add
 
 
 def average_vertices_coords(vertices_coords):
@@ -28,6 +28,7 @@ def compute_catmull_edge_vertices(me, face_vertices):
     return edge_vertices
 
 
+# V:{F}
 def get_vertex_faces(me):
     vertex_faces = [[] for i in range(len(me.vertices))]
     for polygon in me.polygons:
@@ -36,7 +37,7 @@ def get_vertex_faces(me):
     
     return vertex_faces
 
-
+# V:{E}
 def get_vertex_edges(me):
     vertex_edges = [[] for i in range(len(me.vertices))]
     for edge in me.edges:
@@ -51,47 +52,38 @@ def compute_coords_faces(me, new_face_vertices, new_edge_vertices, vertex_faces,
     vtx_last_idx = 0
     faces = []
     for polygon in me.polygons:
-        # new vtx 4
+        # new vtx 4 (face vtx)
         face_vtx = new_face_vertices[polygon.index][:]
-        vtx_idx_dict[face_vtx] = vtx_last_idx
-        vtx_last_idx += 1
+        vtx_last_idx += add(face_vtx, vtx_idx_dict, vtx_last_idx)
 
         for loop_idx in range(polygon.loop_start, polygon.loop_start + polygon.loop_total):
             prev_loop_idx = loop_idx-1 if loop_idx > polygon.loop_start else loop_idx+polygon.loop_total-1
 
-            # new vtx 1
+            # new vtx 1 (edge vtx)
             prev_edge_vtx = new_edge_vertices[me.edges[me.loops[prev_loop_idx].edge_index].key][:]
-            if prev_edge_vtx not in vtx_idx_dict:
-                vtx_idx_dict[prev_edge_vtx] = vtx_last_idx
-                vtx_last_idx += 1
+            vtx_last_idx += add(prev_edge_vtx, vtx_idx_dict, vtx_last_idx)
 
-            # new vtx 2
+            # new vtx 2 (move original vertex)
             V = me.vertices[me.loops[loop_idx].vertex_index].co
             cur_new_face_vertices = [new_face_vertices[i] for i in vertex_faces[me.loops[loop_idx].vertex_index]]
-            print(cur_new_face_vertices)
             F = average_vertices_coords(cur_new_face_vertices)
             cur_new_edge_vertices = [new_edge_vertices[i] for i in vertex_edges[me.loops[loop_idx].vertex_index]]
-            print(cur_new_edge_vertices)
             R = average_vertices_coords(cur_new_edge_vertices)
             m = len(cur_new_edge_vertices)
             new_original_vtx = ((F + 2*R + (m-3)*V) / m)[:]
 
-            if new_original_vtx not in vtx_idx_dict:
-                vtx_idx_dict[new_original_vtx] = vtx_last_idx
-                vtx_last_idx += 1
+            vtx_last_idx += add(new_original_vtx, vtx_idx_dict, vtx_last_idx)
 
-            # new vtx 3
+            # new vtx 3 (edge vtx)
             cur_edge_vtx = new_edge_vertices[me.edges[me.loops[loop_idx].edge_index].key][:]
-            if cur_edge_vtx not in vtx_idx_dict:
-                vtx_idx_dict[cur_edge_vtx] = vtx_last_idx
-                vtx_last_idx += 1
+            vtx_last_idx += add(cur_edge_vtx, vtx_idx_dict, vtx_last_idx)
 
             faces.append((vtx_idx_dict[prev_edge_vtx], vtx_idx_dict[new_original_vtx], vtx_idx_dict[cur_edge_vtx], vtx_idx_dict[face_vtx]))
 
     return [*vtx_idx_dict], faces
 
 
-def catmull_clark_subdivision(me):
+def catmull_clark_subdivision(me, transform):
     # face centroids
     face_vertices = compute_face_vertices(me)
 
@@ -104,7 +96,7 @@ def catmull_clark_subdivision(me):
     # prepare data for blender mesh creation
     coords, faces = compute_coords_faces(me, face_vertices, edge_vertices, vertex_faces, vertex_edges)
     
-    create_mesh(coords, faces, "SubdividedMesh", "SubdividedObject")
+    return create_mesh(coords, faces, "SubdividedMesh", "SubdividedObject", transform)
 
 
 def main():
@@ -126,7 +118,7 @@ def main():
     t = time()
 
     # Function that does all the work
-    catmull_clark_subdivision(mesh)
+    catmull_clark_subdivision(mesh, ob.matrix_world)
 
     # Report performance...
     print("Script took %6.2f secs.\n\n" % (time()-t))

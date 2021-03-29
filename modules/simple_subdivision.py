@@ -33,6 +33,11 @@ def compute_edge_vertices(me):
 
     return edge_vertices
 
+def add(vtx, vtx_idx_dict, vtx_last_idx):
+    if vtx not in vtx_idx_dict:
+        vtx_idx_dict[vtx] = vtx_last_idx
+        return True
+    return False
 
 def compute_coords_faces(me, face_vertices, edge_vertices):
     vtx_idx_dict = {}
@@ -41,36 +46,29 @@ def compute_coords_faces(me, face_vertices, edge_vertices):
     for polygon in me.polygons:
         # new vtx 4
         face_vtx = face_vertices[polygon.index][:]
-        vtx_idx_dict[face_vtx] = vtx_last_idx
-        vtx_last_idx += 1
+        vtx_last_idx += add(face_vtx, vtx_idx_dict, vtx_last_idx)
 
         for loop_idx in range(polygon.loop_start, polygon.loop_start + polygon.loop_total):
             prev_loop_idx = loop_idx-1 if loop_idx > polygon.loop_start else loop_idx+polygon.loop_total-1
 
             # new vtx 1
             prev_edge_vtx = edge_vertices[me.edges[me.loops[prev_loop_idx].edge_index].key]
-            if prev_edge_vtx not in vtx_idx_dict:
-                vtx_idx_dict[prev_edge_vtx] = vtx_last_idx
-                vtx_last_idx += 1
+            vtx_last_idx += add(prev_edge_vtx, vtx_idx_dict, vtx_last_idx)
 
             # new vtx 2
             loop_vtx = me.vertices[me.loops[loop_idx].vertex_index].co[:]
-            if loop_vtx not in vtx_idx_dict:
-                vtx_idx_dict[loop_vtx] = vtx_last_idx
-                vtx_last_idx += 1
+            vtx_last_idx += add(loop_vtx, vtx_idx_dict, vtx_last_idx)
 
             # new vtx 3
             cur_edge_vtx = edge_vertices[me.edges[me.loops[loop_idx].edge_index].key]
-            if cur_edge_vtx not in vtx_idx_dict:
-                vtx_idx_dict[cur_edge_vtx] = vtx_last_idx
-                vtx_last_idx += 1
+            vtx_last_idx += add(cur_edge_vtx, vtx_idx_dict, vtx_last_idx)
 
             faces.append((vtx_idx_dict[prev_edge_vtx], vtx_idx_dict[loop_vtx], vtx_idx_dict[cur_edge_vtx], vtx_idx_dict[face_vtx]))
 
     return [*vtx_idx_dict], faces
 
 
-def simple_subdivision(me):
+def simple_subdivision(me, transform):
     # face centroids
     face_vertices = compute_face_vertices(me)
 
@@ -80,7 +78,7 @@ def simple_subdivision(me):
     # prepare data for blender mesh creation
     coords, faces = compute_coords_faces(me, face_vertices, edge_vertices)
     
-    create_mesh(coords, faces, "SubdividedMesh", "SubdividedObject")
+    return create_mesh(coords, faces, "SubdividedMesh", "SubdividedObject", transform)
 
 
 def main():
@@ -102,7 +100,7 @@ def main():
     t = time()
 
     # Function that does all the work
-    simple_subdivision(mesh)
+    simple_subdivision(mesh, ob.matrix_world)
 
     # Report performance...
     print("Script took %6.2f secs.\n\n" % (time()-t))
