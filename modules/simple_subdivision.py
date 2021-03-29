@@ -1,33 +1,82 @@
-import bpy
 from time import time
+import bpy
 import mathutils
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../modules")
 from manifolds import get_manifolds
+from create_mesh import create_mesh
 
 
-def simple_subdivision(me):
-    # face centroids
-    face_vtx = []
+def compute_face_vertices(me):
+    face_vertices = []
     for polygon in me.polygons:
         centroid = mathutils.Vector([0,0,0])
         for vert_idx in polygon.vertices:
             centroid += me.vertices[vert_idx].co
 
-        face_vtx.append(centroid / len(me.vertices))
+        face_vertices.append(centroid / len(polygon.vertices))
 
-    # edge midpoints
+    return face_vertices
+
+
+def compute_edge_vertices(me):
+    edge_vertices = {}
     manifold_edges_polygon_dict = get_manifolds(me)
-    for edge_key, faces in manifold_edges_polygon_dict:
+    for edge_key in manifold_edges_polygon_dict:
         # current edge vertices
         vtx_A1, vtx_A2 = me.vertices[edge_key[0]].co, me.vertices[edge_key[1]].co
 
         # new face verices (computed above)
-        vtx_F1, vtx_F2 = face_vtx[faces[0]].co, face_vtx[faces[1]].co
-        edge_vtx = (vtx_A1 + vtx_A2 + vtx_F1 + vtx_F2)
-        
+        edge_vertices[edge_key] = ((vtx_A1 + vtx_A2)/2.0)[:]
 
+    return edge_vertices
+
+
+def compute_coords_faces(me, face_vertices, edge_vertices):
+    vtx_idx_dict = {}
+    vtx_last_idx = 0
+    faces = []
+    for polygon in me.polygons:
+        # new vtx 4
+        face_vtx = face_vertices[polygon.index][:]
+        vtx_idx_dict[face_vtx] = vtx_last_idx
+        vtx_last_idx += 1
+
+        for loop_idx in range(polygon.loop_start, polygon.loop_start + polygon.loop_total):
+            prev_loop_idx = loop_idx-1 if loop_idx > polygon.loop_start else loop_idx+polygon.loop_total-1
+
+            # new vtx 1
+            prev_edge_vtx = edge_vertices[me.edges[me.loops[prev_loop_idx].edge_index].key]
+            if prev_edge_vtx not in vtx_idx_dict:
+                vtx_idx_dict[prev_edge_vtx] = vtx_last_idx
+                vtx_last_idx += 1
+
+            # new vtx 2
+            loop_vtx = me.vertices[me.loops[loop_idx].vertex_index].co[:]
+            if loop_vtx not in vtx_idx_dict:
+                vtx_idx_dict[loop_vtx] = vtx_last_idx
+                vtx_last_idx += 1
+
+            # new vtx 3
+            cur_edge_vtx = edge_vertices[me.edges[me.loops[loop_idx].edge_index].key]
+            if cur_edge_vtx not in vtx_idx_dict:
+                vtx_idx_dict[cur_edge_vtx] = vtx_last_idx
+                vtx_last_idx += 1
+
+            faces.append((vtx_idx_dict[prev_edge_vtx], vtx_idx_dict[loop_vtx], vtx_idx_dict[cur_edge_vtx], vtx_idx_dict[face_vtx]))
+
+    return [*vtx_idx_dict], faces
+
+
+def simple_subdivision(me):
+    # face centroids
+    face_vertices = compute_face_vertices(me)
+
+    # edge midpoints
+    edge_vertices = compute_edge_vertices(me)
+
+    # prepare data for blender mesh creation
+    coords, faces = compute_coords_faces(me, face_vertices, edge_vertices)
+    
+    create_mesh(coords, faces, "SubdividedMesh", "SubdividedObject")
 
 
 def main():
@@ -49,7 +98,7 @@ def main():
     t = time()
 
     # Function that does all the work
-    centroid = simple_subdivision(mesh)
+    simple_subdivision(mesh)
 
     # Report performance...
     print("Script took %6.2f secs.\n\n" % (time()-t))
