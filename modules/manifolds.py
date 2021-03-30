@@ -1,6 +1,5 @@
 import bpy 
 from time import time
-import mathutils
 
 def get_manifolds(me):
 

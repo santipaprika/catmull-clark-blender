@@ -2,7 +2,7 @@ from time import time
 import bpy
 import mathutils
 from manifolds import get_manifolds
-from create_mesh import create_mesh
+from create_mesh import create_mesh, create_object_from_mesh
 from simple_subdivision import compute_face_vertices, add
 
 
@@ -83,7 +83,7 @@ def compute_coords_faces(me, new_face_vertices, new_edge_vertices, vertex_faces,
     return [*vtx_idx_dict], faces
 
 
-def catmull_clark_subdivision(me, transform):
+def catmull_clark_subdivision(me, instantiate=False, transform=mathutils.Matrix.identity):
     # face centroids
     face_vertices = compute_face_vertices(me)
 
@@ -96,7 +96,12 @@ def catmull_clark_subdivision(me, transform):
     # prepare data for blender mesh creation
     coords, faces = compute_coords_faces(me, face_vertices, edge_vertices, vertex_faces, vertex_edges)
     
-    return create_mesh(coords, faces, "SubdividedMesh", "SubdividedObject", transform)
+    out_mesh = create_mesh(coords, faces, "SubdividedMesh")
+
+    if instantiate:
+        create_object_from_mesh(out_mesh, "CatmullSubdividedObject", transform)
+
+    return out_mesh
 
 
 def main():
@@ -118,7 +123,7 @@ def main():
     t = time()
 
     # Function that does all the work
-    catmull_clark_subdivision(mesh, ob.matrix_world)
+    catmull_clark_subdivision(mesh, True, ob.matrix_world)
 
     # Report performance...
     print("Script took %6.2f secs.\n\n" % (time()-t))
