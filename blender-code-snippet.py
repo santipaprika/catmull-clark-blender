@@ -7,18 +7,24 @@ if not os.path.dirname(os.path.abspath(__file__)) + "/../../modules" in sys.path
     sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../modules")
 
 import create_mesh
+
+# main modules
 import simple_subdivision
 import catmull_clark_subdivision
 import parameter_surfaces
 import animation
 
 importlib.reload( create_mesh )
+
+# main modules
 importlib.reload( simple_subdivision )
 importlib.reload( catmull_clark_subdivision )
 importlib.reload( parameter_surfaces )
 importlib.reload( animation )
 
-animation.main()
-#simple_subdivision.main()
-#filename = os.path.join(os.path.dirname(bpy.data.filepath), "../modules/simple_subdivision.py")
-#exec(compile(open(filename).read(), filename, 'exec'))
+# clear callbacks
+bpy.app.handlers.frame_change_pre.clear()
+bpy.app.handlers.frame_change_post.clear()
+
+# execute
+animation.main(False)

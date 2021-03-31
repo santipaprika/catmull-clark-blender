@@ -8,15 +8,31 @@ from create_mesh import create_mesh, create_object_from_mesh
 def create_subdivisions(me, num_subdivs, transform):
     me_simple = me
     me_catmull_clark = me
-    for _ in range(num_subdivs):
-        me_simple = simple_subdivision(me_simple)
-        me_catmull_clark = catmull_clark_subdivision(me_catmull_clark)
+    for i in range(num_subdivs):
+        if i%2 == 0:
+            me_simple_aux = simple_subdivision(me_simple)
+            me_catmull_clark_aux = catmull_clark_subdivision(me_catmull_clark)
+            if i > 0:
+                bpy.data.meshes.remove(me_simple)
+                bpy.data.meshes.remove(me_catmull_clark)
+        else:
+            me_simple = simple_subdivision(me_simple_aux)
+            me_catmull_clark = catmull_clark_subdivision(me_catmull_clark_aux)
+            bpy.data.meshes.remove(me_simple_aux)
+            bpy.data.meshes.remove(me_catmull_clark_aux)
 
+    if num_subdivs % 2 != 0:
+        me_simple = me_simple_aux 
+        me_catmull_clark = me_catmull_clark_aux
+            
     ob_simple = create_object_from_mesh(me_simple, "Subdivided Simple Object", transform)
     ob_catmull_clark = create_object_from_mesh(me_catmull_clark, "Subdivided Catmull Object", transform)
-
+    
     ob_simple.hide_viewport = True
+    ob_simple.hide_render = True
+
     ob_catmull_clark.hide_viewport = True
+    ob_catmull_clark.hide_render = True
 
     return me_simple, me_catmull_clark
 
@@ -31,12 +47,18 @@ def get_coords_and_faces(me_simple, me_catmull_clark):
     return coords_simple, coords_catmull_clark, faces_output
 
 
-def create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, t, transform):
-
+def create_interpolated_mesh(coords_simple, coords_catmull_clark, faces_output, t):
     coords_output = [((1-t)*coord_simple + t*coord_catmull_clark)[:] for coord_simple, coord_catmull_clark in zip(coords_simple, coords_catmull_clark)]
+    return create_mesh(coords_output, faces_output, "Interpolated Mesh")
 
-    interp_mesh = create_mesh(coords_output, faces_output, "Interpolated Mesh")
-    create_object_from_mesh(interp_mesh, "Subdivided Interpolated Object", transform)
+def create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, t, transform, shade_smooth=False):
+    interpolated_mesh = create_interpolated_mesh(coords_simple, coords_catmull_clark, faces_output, t)
+    obj = create_object_from_mesh(interpolated_mesh, "Subdivided Interpolated Object", transform)
+
+    if shade_smooth:
+        obj.select_set(True)
+        bpy.ops.object.shade_smooth()
+        obj.select_set(False)
 
 
 def create_and_interpolate_subdivision(me, num_subdivs, t, transform):
@@ -45,7 +67,7 @@ def create_and_interpolate_subdivision(me, num_subdivs, t, transform):
     create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, t, transform)
 
 
-def main():
+def main(parameter):
     # Retrieve the active object (the last one selected)
     ob = bpy.context.active_object
 
@@ -64,11 +86,11 @@ def main():
     t = time()
 
     # Function that does all the work
-    create_and_interpolate_subdivision(mesh, 3, 0.5, ob.matrix_world)
+    create_and_interpolate_subdivision(mesh, 3, parameter, ob.matrix_world)
 
     # Report performance...
     print("Script took %6.2f secs.\n\n" % (time()-t))
 
 
 if __name__ == "__main__":
-    main()
+    main(0.5)

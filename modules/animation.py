@@ -1,10 +1,10 @@
 from time import time
 import bpy
 from parameter_surfaces import create_interpolated_object, get_coords_and_faces, create_subdivisions
+from bpy.app.handlers import persistent
 
-def animation_cbck(scn):
-    if bpy.context.object:
-        bpy.context.object.select_set(False)
+@persistent
+def animation_cbck(scn, depsgraph):
 
     strt = scn.frame_start
     end = scn.frame_end
@@ -19,21 +19,31 @@ def animation_cbck(scn):
         if "Catmull" in itm.name:
             me_catmull_clark = itm.data
         if "Interpolated" in itm.name:
+            out_obj = itm
+            # uncomment next line if intended to render animation
+            # itm = itm.evaluated_get(depsgraph)
             mesh = itm.data
-            itm.select_set(True)
-            bpy.ops.object.delete()
-            bpy.data.meshes.remove(mesh)
     
+    coords_simple, coords_catmull_clark, _ = get_coords_and_faces(me_simple, me_catmull_clark)
+    coords_output = [((1-t)*coord_simple + t*coord_catmull_clark)[:] for coord_simple, coord_catmull_clark in zip(coords_simple, coords_catmull_clark)]
+    
+    for vert, coords in zip(mesh.vertices, coords_output):
+        vert.co = coords
+
+    # out_obj.select_set(True)
+    # bpy.ops.object.shade_smooth()
+    # out_obj.select_set(False)
+
+
+def animate(me, num_subdivs, transform, shade_smooth=False):
+    me_simple, me_catmull_clark = create_subdivisions(me, num_subdivs, transform)
     coords_simple, coords_catmull_clark, faces_output = get_coords_and_faces(me_simple, me_catmull_clark)
-    create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, t, transform)
+    create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, 0, transform, shade_smooth)
+    # bpy.app.handlers.frame_change_pre.append(animation_cbck)
+    bpy.app.handlers.frame_change_post.append(animation_cbck)
 
 
-def animate(me, num_subdivs, transform):
-    create_subdivisions(me, num_subdivs, transform)
-    bpy.app.handlers.frame_change_pre.append(animation_cbck)
-
-
-def main():
+def main(shade_smooth=False):
     # Retrieve the active object (the last one selected)
     ob = bpy.context.active_object
 
@@ -51,8 +61,9 @@ def main():
     # Get current time
     t = time()
 
+    ob.hide_render = True
     # Function that does all the work
-    animate(mesh, 4, ob.matrix_world)
+    animate(mesh, 4, ob.matrix_world, shade_smooth)
 
     # Report performance...
     print("Script took %6.2f secs.\n\n" % (time()-t))
