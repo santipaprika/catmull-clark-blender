@@ -4,7 +4,7 @@ from simple_subdivision import simple_subdivision
 from catmull_clark_subdivision import catmull_clark_subdivision
 from create_mesh import create_mesh, create_object_from_mesh
 
-
+# iterate simple and catmull-clarke subdivision 'num_subdivs' times and create objects with the new data (meshes).
 def create_subdivisions(me, num_subdivs, transform):
     me_simple = me
     me_catmull_clark = me
@@ -36,6 +36,7 @@ def create_subdivisions(me, num_subdivs, transform):
 
     return me_simple, me_catmull_clark
 
+
 def get_coords_and_faces(me_simple, me_catmull_clark):
     coords_simple = [vertex.co for vertex in me_simple.vertices] 
     coords_catmull_clark = [vertex.co for vertex in me_catmull_clark.vertices] 
@@ -47,12 +48,9 @@ def get_coords_and_faces(me_simple, me_catmull_clark):
     return coords_simple, coords_catmull_clark, faces_output
 
 
-def create_interpolated_mesh(coords_simple, coords_catmull_clark, faces_output, t):
-    coords_output = [((1-t)*coord_simple + t*coord_catmull_clark)[:] for coord_simple, coord_catmull_clark in zip(coords_simple, coords_catmull_clark)]
-    return create_mesh(coords_output, faces_output, "Interpolated Mesh")
-
 def create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, t, transform, shade_smooth=False):
-    interpolated_mesh = create_interpolated_mesh(coords_simple, coords_catmull_clark, faces_output, t)
+    coords_output = [((1-t)*coord_simple + t*coord_catmull_clark)[:] for coord_simple, coord_catmull_clark in zip(coords_simple, coords_catmull_clark)]
+    interpolated_mesh = create_mesh(coords_output, faces_output, "Interpolated Mesh")
     obj = create_object_from_mesh(interpolated_mesh, "Subdivided Interpolated Object", transform)
 
     if shade_smooth:
@@ -61,10 +59,10 @@ def create_interpolated_object(coords_simple, coords_catmull_clark, faces_output
         obj.select_set(False)
 
 
-def create_and_interpolate_subdivision(me, num_subdivs, t, transform):
+def create_and_interpolate_subdivision(me, num_subdivs, t, transform, shade_smooth=False):
     me_simple, me_catmull_clark = create_subdivisions(me, num_subdivs, transform)
     coords_simple, coords_catmull_clark, faces_output = get_coords_and_faces(me_simple, me_catmull_clark)
-    create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, t, transform)
+    create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, t, transform, shade_smooth)
 
 
 def main(parameter):

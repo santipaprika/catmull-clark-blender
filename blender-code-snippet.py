@@ -27,4 +27,5 @@ bpy.app.handlers.frame_change_pre.clear()
 bpy.app.handlers.frame_change_post.clear()
 
 # execute
-animation.main(False)
+# bool argument: smooth (True) or flat (False) shading.
+animation.main(True)

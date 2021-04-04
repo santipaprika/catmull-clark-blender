@@ -1,10 +1,10 @@
 from time import time
 import bpy
-from parameter_surfaces import create_interpolated_object, get_coords_and_faces, create_subdivisions
+from parameter_surfaces import create_and_interpolate_subdivision, get_coords_and_faces
 from bpy.app.handlers import persistent
 
 @persistent
-def animation_cbck(scn, depsgraph):
+def animation_cbck(scn):
 
     strt = scn.frame_start
     end = scn.frame_end
@@ -15,13 +15,9 @@ def animation_cbck(scn, depsgraph):
     for itm in bpy.data.objects:
         if "Simple" in itm.name:
             me_simple = itm.data
-            transform = itm.matrix_world
         if "Catmull" in itm.name:
             me_catmull_clark = itm.data
         if "Interpolated" in itm.name:
-            out_obj = itm
-            # uncomment next line if intended to render animation
-            # itm = itm.evaluated_get(depsgraph)
             mesh = itm.data
     
     coords_simple, coords_catmull_clark, _ = get_coords_and_faces(me_simple, me_catmull_clark)
@@ -30,17 +26,16 @@ def animation_cbck(scn, depsgraph):
     for vert, coords in zip(mesh.vertices, coords_output):
         vert.co = coords
 
-    # out_obj.select_set(True)
-    # bpy.ops.object.shade_smooth()
-    # out_obj.select_set(False)
+    mesh.update()
 
 
 def animate(me, num_subdivs, transform, shade_smooth=False):
-    me_simple, me_catmull_clark = create_subdivisions(me, num_subdivs, transform)
-    coords_simple, coords_catmull_clark, faces_output = get_coords_and_faces(me_simple, me_catmull_clark)
-    create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, 0, transform, shade_smooth)
-    # bpy.app.handlers.frame_change_pre.append(animation_cbck)
-    bpy.app.handlers.frame_change_post.append(animation_cbck)
+    # this creates both the simple and catmull-clark subdivided objects, which will be hidden,
+    # and a copy of the simple subdivided one that will be the target object to be interpolated.
+    create_and_interpolate_subdivision(me, num_subdivs, 0, transform, shade_smooth)
+
+    # register the animation callback
+    bpy.app.handlers.frame_change_pre.append(animation_cbck)
 
 
 def main(shade_smooth=False):

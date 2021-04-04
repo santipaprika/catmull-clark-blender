@@ -17,13 +17,14 @@ def average_vertices_coords(vertices_coords):
 def compute_catmull_edge_vertices(me, face_vertices):
     edge_vertices = {}
     manifold_edges_polygon_dict = get_manifolds(me)
+
     for edge_key, faces in manifold_edges_polygon_dict.items():
         # current edge vertices
         vtx_A1, vtx_A2 = me.vertices[edge_key[0]].co, me.vertices[edge_key[1]].co
 
         # new face verices (computed above)
         vtx_F1, vtx_F2 = face_vertices[faces[0]], face_vertices[faces[1]]
-        edge_vertices[edge_key] = ((vtx_A1 + vtx_A2 + vtx_F1 + vtx_F2)/4.0)
+        edge_vertices[edge_key] = ((vtx_A1 + vtx_A2 + vtx_F1 + vtx_F2)/4.0) 
 
     return edge_vertices
 
