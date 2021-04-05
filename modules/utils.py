@@ -27,6 +27,14 @@ def average_vertices_coords(vertices_coords):
 
     return (cum_sum / len(vertices_coords))
 
+def get_neighbor_contribution(vertex_edges, new_edge_vertices, filtered_edges_dict, contribution=1/4):
+    new_vtx_contribution = mathutils.Vector([0,0,0])
+    for edge_key in vertex_edges:
+        if edge_key in filtered_edges_dict:
+            new_vtx_contribution += new_edge_vertices[edge_key] * contribution
+    
+    return new_vtx_contribution
+
 
 ## ---------- TOPOLOGY FILTER QUERIES -----------
 
@@ -43,6 +51,14 @@ def get_manifolds(me):
     boundary = {edge_key:faces for edge_key, faces in edge_polygons.items() if len(edge_polygons[edge_key]) == 1}
 
     return manifolds, boundary
+
+# get crease for all edges
+def get_crease_per_edge(me):
+    crease = {}
+    for edge in me.edges:
+        crease[edge.key] = edge.crease
+
+    return crease
 
 
 ## ------------- TOPOLOGY RELATIONS -------------

@@ -37,6 +37,7 @@ def create_subdivisions(me, num_subdivs, transform):
     return me_simple, me_catmull_clark
 
 
+# get data from both meshes
 def get_coords_and_faces(me_simple, me_catmull_clark):
     coords_simple = [vertex.co for vertex in me_simple.vertices] 
     coords_catmull_clark = [vertex.co for vertex in me_catmull_clark.vertices] 
@@ -48,6 +49,7 @@ def get_coords_and_faces(me_simple, me_catmull_clark):
     return coords_simple, coords_catmull_clark, faces_output
 
 
+# interpolate two meshes
 def create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, t, transform, shade_smooth=False):
     coords_output = [((1-t)*coord_simple + t*coord_catmull_clark)[:] for coord_simple, coord_catmull_clark in zip(coords_simple, coords_catmull_clark)]
     interpolated_mesh = create_mesh(coords_output, faces_output, "Interpolated Mesh")
@@ -59,6 +61,7 @@ def create_interpolated_object(coords_simple, coords_catmull_clark, faces_output
         obj.select_set(False)
 
 
+# perform subdivisions and interpolate
 def create_and_interpolate_subdivision(me, num_subdivs, t, transform, shade_smooth=False):
     me_simple, me_catmull_clark = create_subdivisions(me, num_subdivs, transform)
     coords_simple, coords_catmull_clark, faces_output = get_coords_and_faces(me_simple, me_catmull_clark)

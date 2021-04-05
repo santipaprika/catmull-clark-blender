@@ -38,7 +38,7 @@ def animate(me, num_subdivs, transform, shade_smooth=False):
     bpy.app.handlers.frame_change_pre.append(animation_cbck)
 
 
-def main(shade_smooth=False):
+def main(num_subdivisions=4, shade_smooth=False):
     # Retrieve the active object (the last one selected)
     ob = bpy.context.active_object
 
@@ -58,7 +58,7 @@ def main(shade_smooth=False):
 
     ob.hide_render = True
     # Function that does all the work
-    animate(mesh, 4, ob.matrix_world, shade_smooth)
+    animate(mesh, num_subdivisions, ob.matrix_world, shade_smooth)
 
     # Report performance...
     print("Script took %6.2f secs.\n\n" % (time()-t))

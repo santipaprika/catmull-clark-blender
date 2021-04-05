@@ -5,32 +5,36 @@ from create_mesh import create_mesh, create_object_from_mesh
 import utils
 
 
-def get_neighbor_contribution(vertex_edges, new_edge_vertices, boundary_edges_dict):
-    new_vtx_contribution = mathutils.Vector([0,0,0])
-    for edge_key in vertex_edges:
-        if edge_key in boundary_edges_dict:
-            new_vtx_contribution += new_edge_vertices[edge_key] * 1/4
-        # else:
-            # new_vtx_contribution += new_edge_vertices[edge_key] * 1/len(vertex_edges)/2
-    
-    return new_vtx_contribution
-
-
 def compute_coords_faces(me, face_vertices, edge_vertices):
     vtx_idx_dict = {}
     vtx_last_idx = 0
     faces = []
+    output_crease = {}
 
     _, boundary_edges_dict = utils.get_manifolds(me)
     new_boundary_vertices = {}
+    new_crease_vertices = {}
 
+    # compute new boundary vertices positions, which will be inserted afterwards in loops corresponding to these ones.
+    # this has no visual effect, but is done to achieve the same vertex indices when performing the interpolation
     for edge in me.edges:
         if edge.key in boundary_edges_dict:
             for vertex_idx in edge.vertices:
-                V = me.vertices[vertex_idx].co
                 new_original_v = me.vertices[vertex_idx].co[:]
                 vtx_last_idx += utils.add(new_original_v, vtx_idx_dict, vtx_last_idx)
                 new_boundary_vertices[vertex_idx] = new_original_v
+
+    # compute crease vertices positions (similar than boundary vertices)
+    # this has no visual effect, but is to achieve the same vertex indices when performing the interpolation
+    vertex_edges = utils.get_vertex_edges(me)
+    crease = utils.get_crease_per_edge(me)
+    for vertex in me.vertices:
+        crease_edges = {vtx_edge:1 for vtx_edge in vertex_edges[vertex.index] if crease[vtx_edge] > 0}
+        if len(crease_edges) < 2:
+            continue
+        new_original_v = me.vertices[vertex.index].co[:]
+        vtx_last_idx += utils.add(new_original_v, vtx_idx_dict, vtx_last_idx)
+        new_crease_vertices[vertex.index] = new_original_v
 
 
     for polygon in me.polygons:
@@ -46,9 +50,11 @@ def compute_coords_faces(me, face_vertices, edge_vertices):
             prev_edge_vtx = edge_vertices[me.edges[me.loops[prev_loop_idx].edge_index].key]
             vtx_last_idx += utils.add(prev_edge_vtx, vtx_idx_dict, vtx_last_idx)
 
-            # new vtx 2
+            # new vtx 2 (two first conditions are to match vertex indices in interpolation)
             if vertex_idx in new_boundary_vertices:
                 loop_vtx = new_boundary_vertices[vertex_idx] 
+            elif vertex_idx in new_crease_vertices:
+                loop_vtx = new_crease_vertices[vertex_idx]
             else:
                 loop_vtx = me.vertices[vertex_idx].co[:]
                 vtx_last_idx += utils.add(loop_vtx, vtx_idx_dict, vtx_last_idx)
@@ -59,7 +65,10 @@ def compute_coords_faces(me, face_vertices, edge_vertices):
 
             faces.append((vtx_idx_dict[prev_edge_vtx], vtx_idx_dict[loop_vtx], vtx_idx_dict[cur_edge_vtx], vtx_idx_dict[face_vtx]))
 
-    return [*vtx_idx_dict], faces
+            output_crease[(vtx_idx_dict[prev_edge_vtx], vtx_idx_dict[loop_vtx])] = crease[me.edges[me.loops[prev_loop_idx].edge_index].key]
+            output_crease[(vtx_idx_dict[loop_vtx], vtx_idx_dict[cur_edge_vtx])] = crease[me.edges[me.loops[loop_idx].edge_index].key]
+
+    return [*vtx_idx_dict], faces, output_crease
 
 
 def simple_subdivision(me, instantiate=False, transform=mathutils.Matrix.identity):
@@ -70,9 +79,16 @@ def simple_subdivision(me, instantiate=False, transform=mathutils.Matrix.identit
     edge_vertices = utils.compute_edge_vertices(me)
 
     # prepare data for blender mesh creation
-    coords, faces = compute_coords_faces(me, face_vertices, edge_vertices)
+    coords, faces, creases = compute_coords_faces(me, face_vertices, edge_vertices)
     
     out_mesh = create_mesh(coords, faces, "SubdividedMesh")
+
+    # add creases
+    for edge in out_mesh.edges:
+        if edge.key in creases:
+            edge.crease = creases[edge.key]
+
+    out_mesh.update()
 
     if instantiate:
         create_object_from_mesh(out_mesh, "CatmullSubdividedObject", transform)
