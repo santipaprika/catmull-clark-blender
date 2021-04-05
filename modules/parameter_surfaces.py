@@ -68,7 +68,7 @@ def create_and_interpolate_subdivision(me, num_subdivs, t, transform, shade_smoo
     create_interpolated_object(coords_simple, coords_catmull_clark, faces_output, t, transform, shade_smooth)
 
 
-def main(parameter):
+def main(parameter, num_subdivs=4):
     # Retrieve the active object (the last one selected)
     ob = bpy.context.active_object
 
@@ -87,7 +87,7 @@ def main(parameter):
     t = time()
 
     # Function that does all the work
-    create_and_interpolate_subdivision(mesh, 3, parameter, ob.matrix_world)
+    create_and_interpolate_subdivision(mesh, num_subdivs, parameter, ob.matrix_world)
 
     # Report performance...
     print("Script took %6.2f secs.\n\n" % (time()-t))
