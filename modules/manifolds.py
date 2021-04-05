@@ -10,8 +10,9 @@ def get_manifolds(me):
             edge_polygons[edge_key] = [polygon.index] if edge_key not in edge_polygons else edge_polygons[edge_key] + [polygon.index]
 
     manifolds = {edge_key:faces for edge_key, faces in edge_polygons.items() if len(edge_polygons[edge_key]) == 2}
+    boundary = {edge_key:faces for edge_key, faces in edge_polygons.items() if len(edge_polygons[edge_key]) == 1}
 
-    return manifolds
+    return manifolds, boundary
 
 
 def main(): 

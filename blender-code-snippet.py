@@ -29,3 +29,5 @@ bpy.app.handlers.frame_change_post.clear()
 # execute
 # bool argument: smooth (True) or flat (False) shading.
 animation.main(True)
+
+# catmull_clark_subdivision.main()

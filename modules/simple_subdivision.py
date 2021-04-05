@@ -1,67 +1,61 @@
 from time import time
 import bpy
 import mathutils
-from manifolds import get_manifolds
 from create_mesh import create_mesh, create_object_from_mesh
+import utils
 
 
-def average_vertices(me, vertices_idx):
-    avg = mathutils.Vector([0,0,0])
-    for vert_idx in vertices_idx:
-        avg += me.vertices[vert_idx].co
+def get_neighbor_contribution(vertex_edges, new_edge_vertices, boundary_edges_dict):
+    new_vtx_contribution = mathutils.Vector([0,0,0])
+    for edge_key in vertex_edges:
+        if edge_key in boundary_edges_dict:
+            new_vtx_contribution += new_edge_vertices[edge_key] * 1/4
+        # else:
+            # new_vtx_contribution += new_edge_vertices[edge_key] * 1/len(vertex_edges)/2
+    
+    return new_vtx_contribution
 
-    return (avg / len(vertices_idx))
-
-
-def compute_face_vertices(me):
-    face_vertices = []
-    for polygon in me.polygons:
-        face_vertices.append(average_vertices(me, polygon.vertices))
-
-    return face_vertices
-
-
-def compute_edge_vertices(me):
-    edge_vertices = {}
-    manifold_edges_polygon_dict = get_manifolds(me)
-    for edge_key in manifold_edges_polygon_dict:
-        # current edge vertices
-        vtx_A1, vtx_A2 = me.vertices[edge_key[0]].co, me.vertices[edge_key[1]].co
-
-        # new face verices (computed above)
-        edge_vertices[edge_key] = ((vtx_A1 + vtx_A2)/2.0)[:]
-
-    return edge_vertices
-
-def add(vtx, vtx_idx_dict, vtx_last_idx):
-    if vtx not in vtx_idx_dict:
-        vtx_idx_dict[vtx] = vtx_last_idx
-        return True
-    return False
 
 def compute_coords_faces(me, face_vertices, edge_vertices):
     vtx_idx_dict = {}
     vtx_last_idx = 0
     faces = []
+
+    _, boundary_edges_dict = utils.get_manifolds(me)
+    new_boundary_vertices = {}
+
+    for edge in me.edges:
+        if edge.key in boundary_edges_dict:
+            for vertex_idx in edge.vertices:
+                V = me.vertices[vertex_idx].co
+                new_original_v = me.vertices[vertex_idx].co[:]
+                vtx_last_idx += utils.add(new_original_v, vtx_idx_dict, vtx_last_idx)
+                new_boundary_vertices[vertex_idx] = new_original_v
+
+
     for polygon in me.polygons:
         # new vtx 4
         face_vtx = face_vertices[polygon.index][:]
-        vtx_last_idx += add(face_vtx, vtx_idx_dict, vtx_last_idx)
+        vtx_last_idx += utils.add(face_vtx, vtx_idx_dict, vtx_last_idx)
 
         for loop_idx in range(polygon.loop_start, polygon.loop_start + polygon.loop_total):
+            vertex_idx = me.loops[loop_idx].vertex_index
             prev_loop_idx = loop_idx-1 if loop_idx > polygon.loop_start else loop_idx+polygon.loop_total-1
 
             # new vtx 1
             prev_edge_vtx = edge_vertices[me.edges[me.loops[prev_loop_idx].edge_index].key]
-            vtx_last_idx += add(prev_edge_vtx, vtx_idx_dict, vtx_last_idx)
+            vtx_last_idx += utils.add(prev_edge_vtx, vtx_idx_dict, vtx_last_idx)
 
             # new vtx 2
-            loop_vtx = me.vertices[me.loops[loop_idx].vertex_index].co[:]
-            vtx_last_idx += add(loop_vtx, vtx_idx_dict, vtx_last_idx)
+            if vertex_idx in new_boundary_vertices:
+                loop_vtx = new_boundary_vertices[vertex_idx] 
+            else:
+                loop_vtx = me.vertices[vertex_idx].co[:]
+                vtx_last_idx += utils.add(loop_vtx, vtx_idx_dict, vtx_last_idx)
 
             # new vtx 3
             cur_edge_vtx = edge_vertices[me.edges[me.loops[loop_idx].edge_index].key]
-            vtx_last_idx += add(cur_edge_vtx, vtx_idx_dict, vtx_last_idx)
+            vtx_last_idx += utils.add(cur_edge_vtx, vtx_idx_dict, vtx_last_idx)
 
             faces.append((vtx_idx_dict[prev_edge_vtx], vtx_idx_dict[loop_vtx], vtx_idx_dict[cur_edge_vtx], vtx_idx_dict[face_vtx]))
 
@@ -70,10 +64,10 @@ def compute_coords_faces(me, face_vertices, edge_vertices):
 
 def simple_subdivision(me, instantiate=False, transform=mathutils.Matrix.identity):
     # face centroids
-    face_vertices = compute_face_vertices(me)
+    face_vertices = utils.compute_face_vertices(me)
 
     # edge midpoints
-    edge_vertices = compute_edge_vertices(me)
+    edge_vertices = utils.compute_edge_vertices(me)
 
     # prepare data for blender mesh creation
     coords, faces = compute_coords_faces(me, face_vertices, edge_vertices)
