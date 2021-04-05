@@ -5,7 +5,7 @@ The current implementation is robust to 2-manifold meshes, meshes with border ed
 
 ## Output animation
 
-https://user-images.githubusercontent.com/44426596/113601258-623ae680-9641-11eb-96ec-bc81b7036b4f.mp4
+[<img src="https://user-images.githubusercontent.com/44426596/113602294-bbefe080-9642-11eb-98f0-748e1ed1a6cf.PNG" width="300">](https://user-images.githubusercontent.com/44426596/113601258-623ae680-9641-11eb-96ec-bc81b7036b4f.mp4)
 
 
 
